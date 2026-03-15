@@ -1,4 +1,4 @@
-﻿const canvas = document.getElementById("game");
+const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 const restartButton = document.getElementById("restartButton");
 const sniffButton = document.getElementById("sniffButton");
@@ -199,7 +199,12 @@ function playSound(name) {
     setTimeout(() => playTone(480, 0.11, 0.03, "triangle", 560), 90);
     return;
   }
-  if (name === "name") {`r`n    playTone(520, 0.1, 0.04, "triangle", 620);`r`n    setTimeout(() => playTone(660, 0.12, 0.04, "triangle", 820), 90);`r`n    return;`r`n  }`r`n  if (name === "win") {
+  if (name === "name") {
+    playTone(520, 0.1, 0.04, "triangle", 620);
+    setTimeout(() => playTone(660, 0.12, 0.04, "triangle", 820), 90);
+    return;
+  }
+  if (name === "win") {
     playTone(520, 0.12, 0.045, "triangle", 660);
     setTimeout(() => playTone(660, 0.12, 0.04, "triangle", 820), 120);
     setTimeout(() => playTone(880, 0.18, 0.04, "triangle", 1040), 240);
