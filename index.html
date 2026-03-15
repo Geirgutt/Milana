@@ -18,15 +18,22 @@
 <body>
   <main class="app-shell">
     <section class="game-frame" aria-label="Spill">
-      <canvas id="game" width="900" height="600" aria-label="Spillflate"></canvas>
+      <canvas id="game" width="1200" height="800" aria-label="Spillflate"></canvas>
 
       <div class="overlay top-left">
         <button id="helpButton" class="icon-button" aria-label="Vis hjelp">?</button>
       </div>
 
       <div class="overlay top-right">
+        <button id="soundButton" class="pill-button secondary">Lyd: På</button>
         <button id="sniffButton" class="pill-button">Snus</button>
         <button id="restartButton" class="pill-button secondary">Start på nytt</button>
+      </div>
+
+      <div id="storyPanel" class="story-panel hidden" aria-live="polite">
+        <p id="storySpeaker" class="story-speaker"></p>
+        <p id="storyText" class="story-text"></p>
+        <button id="storyNextButton" class="pill-button story-next">Neste</button>
       </div>
 
       <div class="overlay bottom-right joystick-wrap" aria-hidden="true">
@@ -46,8 +53,8 @@
       <ul>
         <li>På mobil bruker du joysticken nederst til høyre eller drar på spillflaten.</li>
         <li>På PC bruker du piltaster eller WASD.</li>
-        <li>Snus viser pil mot utgangen når du er inne i huset.</li>
-        <li>Huset er normalt synlig nær hunden og helt svart utenfor synssirkelen.</li>
+        <li>Snus viser pil mot neste viktige mål.</li>
+        <li>Trykk Neste i dialogboksen for å fortsette historien.</li>
       </ul>
     </form>
   </dialog>
