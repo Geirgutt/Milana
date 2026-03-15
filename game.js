@@ -388,12 +388,10 @@ function drawFog() {
 
   ctx.save();
   ctx.fillStyle = "rgba(0, 0, 0, 1)";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  ctx.globalCompositeOperation = "destination-out";
   ctx.beginPath();
-  ctx.arc(state.player.x, state.player.y, visibleRadius, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.rect(0, 0, canvas.width, canvas.height);
+  ctx.arc(state.player.x, state.player.y, visibleRadius, 0, Math.PI * 2, true);
+  ctx.fill("evenodd");
   ctx.restore();
 }
 
@@ -570,4 +568,5 @@ sniffButton.addEventListener("click", triggerSniff);
 renderJoystick();
 resetGame();
 tick();
+
 
