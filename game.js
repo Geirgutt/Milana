@@ -4,9 +4,14 @@ const stageLabel = document.getElementById("stageLabel");
 const message = document.getElementById("message");
 const restartButton = document.getElementById("restartButton");
 const sniffButton = document.getElementById("sniffButton");
-const touchButtons = Array.from(document.querySelectorAll("[data-dir]"));
 
 const keys = new Set();
+const pointer = {
+  active: false,
+  x: 0,
+  y: 0,
+  pointerId: null
+};
 
 const state = {
   stage: "blanket",
@@ -14,7 +19,6 @@ const state = {
   blanketGap: { x: 650, y: 250, w: 95, h: 110 },
   houseGoal: { x: 812, y: 250, w: 60, h: 120 },
   sniffPulse: 0,
-  winPulse: 0,
   blanketSlowZones: [
     { x: 250, y: 190, w: 110, h: 120 },
     { x: 390, y: 120, w: 130, h: 90 },
@@ -39,7 +43,8 @@ function resetGame() {
   state.player.x = 320;
   state.player.y = 320;
   state.sniffPulse = 0;
-  state.winPulse = 0;
+  pointer.active = false;
+  pointer.pointerId = null;
   updateText(
     "Nivå 1: Kom deg ut av teppet",
     "Rull gjennom foldene, finn åpningen og kom deg løs."
@@ -60,9 +65,34 @@ function rectsOverlap(a, b) {
 }
 
 function triggerSniff() {
-  if (state.stage === "house") {
-    state.sniffPulse = 70;
+  if (state.stage === "house") state.sniffPulse = 70;
+}
+
+function getPointerCanvasPosition(event) {
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  return {
+    x: (event.clientX - rect.left) * scaleX,
+    y: (event.clientY - rect.top) * scaleY
+  };
+}
+
+function getMovementVector() {
+  let dx = 0;
+  let dy = 0;
+
+  if (keys.has("arrowup") || keys.has("w")) dy -= 1;
+  if (keys.has("arrowdown") || keys.has("s")) dy += 1;
+  if (keys.has("arrowleft") || keys.has("a")) dx -= 1;
+  if (keys.has("arrowright") || keys.has("d")) dx += 1;
+
+  if (pointer.active) {
+    dx += pointer.x - state.player.x;
+    dy += pointer.y - state.player.y;
   }
+
+  return { dx, dy };
 }
 
 function getMovementSpeed() {
@@ -76,23 +106,23 @@ function getMovementSpeed() {
         state.player.y > zone.y &&
         state.player.y < zone.y + zone.h
     );
-
     if (slowZone) speed *= 0.62;
+  }
+
+  if (pointer.active) {
+    const distance = Math.hypot(pointer.x - state.player.x, pointer.y - state.player.y);
+    speed *= Math.min(1.35, Math.max(0.22, distance / 75));
   }
 
   return speed;
 }
 
 function movePlayer() {
-  let dx = 0;
-  let dy = 0;
+  const movement = getMovementVector();
+  let dx = movement.dx;
+  let dy = movement.dy;
 
-  if (keys.has("arrowup") || keys.has("w")) dy -= 1;
-  if (keys.has("arrowdown") || keys.has("s")) dy += 1;
-  if (keys.has("arrowleft") || keys.has("a")) dx -= 1;
-  if (keys.has("arrowright") || keys.has("d")) dx += 1;
-
-  if (dx === 0 && dy === 0) return;
+  if (Math.abs(dx) < 5 && Math.abs(dy) < 5) return;
 
   const length = Math.hypot(dx, dy) || 1;
   const speed = getMovementSpeed();
@@ -124,7 +154,6 @@ function movePlayer() {
     };
 
     const bumped = state.blanketBumpers.some((bumper) => rectsOverlap(nextRect, bumper));
-
     if ((insideBlanket || insideGap || outsideAfterGap) && !bumped) {
       state.player.x = next.x;
       state.player.y = next.y;
@@ -136,7 +165,7 @@ function movePlayer() {
       state.player.y = 500;
       updateText(
         "Nivå 2: Tåkete hus",
-        "Du ser tydelig rundt hunden. Resten av huset er svart. Snus gir pil mot døren."
+        "Dra med fingeren for å styre. Rundt hunden er det klart, kanten fader ut i svart fog of war."
       );
     }
 
@@ -158,16 +187,8 @@ function movePlayer() {
     state.player.y = next.y;
   }
 
-  const goalRect = {
-    x: state.houseGoal.x,
-    y: state.houseGoal.y,
-    w: state.houseGoal.w,
-    h: state.houseGoal.h
-  };
-
-  if (rectsOverlap(playerRect, goalRect)) {
+  if (rectsOverlap(playerRect, state.houseGoal)) {
     state.stage = "win";
-    state.winPulse = 1;
     updateText(
       "Du klarte det!",
       "Hunden fant veien ut av huset. Trykk Start på nytt for å spille igjen."
@@ -208,23 +229,13 @@ function drawBlanketStage() {
   }
 
   ctx.fillStyle = "#fff4df";
-  ctx.fillRect(
-    state.blanketGap.x,
-    state.blanketGap.y,
-    state.blanketGap.w,
-    state.blanketGap.h
-  );
+  ctx.fillRect(state.blanketGap.x, state.blanketGap.y, state.blanketGap.w, state.blanketGap.h);
 
   ctx.fillStyle = "#8d3a22";
   ctx.font = "24px Georgia";
   ctx.fillText("Finn åpningen i teppet", 45, 52);
   ctx.font = "20px Georgia";
   ctx.fillText("Rull gjennom foldene uten å sette deg fast", 45, 82);
-
-  ctx.fillStyle = "#fff8ee";
-  ctx.font = "18px Georgia";
-  ctx.fillText("Myke folder bremser deg", 235, 180);
-  ctx.fillText("Tykke bretter stopper deg", 494, 188);
 }
 
 function drawHouseStage() {
@@ -253,12 +264,10 @@ function drawHouseStage() {
 
 function drawBackground() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-
   if (state.stage === "blanket") {
     drawBlanketStage();
     return;
   }
-
   drawHouseStage();
 }
 
@@ -311,15 +320,15 @@ function drawSniffCue() {
   ctx.strokeStyle = `rgba(255, 255, 210, ${Math.min(0.95, state.sniffPulse / 70)})`;
   ctx.lineWidth = 7;
   ctx.beginPath();
-  ctx.moveTo(22, 0);
-  ctx.lineTo(72, 0);
+  ctx.moveTo(30, 0);
+  ctx.lineTo(94, 0);
   ctx.stroke();
 
   ctx.beginPath();
-  ctx.moveTo(72, 0);
-  ctx.lineTo(58, -10);
-  ctx.moveTo(72, 0);
-  ctx.lineTo(58, 10);
+  ctx.moveTo(94, 0);
+  ctx.lineTo(76, -12);
+  ctx.moveTo(94, 0);
+  ctx.lineTo(76, 12);
   ctx.stroke();
   ctx.restore();
 }
@@ -327,9 +336,8 @@ function drawSniffCue() {
 function drawFog() {
   if (state.stage !== "house") return;
 
-  const clearRadius = 135;
-  const softRadius = 240;
-  const outerRadius = 340;
+  const clearRadius = 150;
+  const fadeRadius = 280;
 
   ctx.save();
   ctx.fillStyle = "rgba(0, 0, 0, 0.96)";
@@ -342,23 +350,26 @@ function drawFog() {
     clearRadius,
     state.player.x,
     state.player.y,
-    outerRadius
+    fadeRadius
   );
   gradient.addColorStop(0, "rgba(255,255,255,1)");
-  gradient.addColorStop(0.35, "rgba(255,255,255,1)");
-  gradient.addColorStop(0.72, "rgba(255,255,255,0.42)");
+  gradient.addColorStop(0.7, "rgba(255,255,255,1)");
   gradient.addColorStop(1, "rgba(255,255,255,0)");
   ctx.fillStyle = gradient;
   ctx.beginPath();
-  ctx.arc(state.player.x, state.player.y, outerRadius, 0, Math.PI * 2);
+  ctx.arc(state.player.x, state.player.y, fadeRadius, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
+}
 
+function drawPointerHint() {
+  if (!pointer.active) return;
   ctx.save();
-  ctx.strokeStyle = "rgba(255, 255, 255, 0.12)";
+  ctx.strokeStyle = "rgba(255,255,255,0.22)";
   ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.arc(state.player.x, state.player.y, softRadius, 0, Math.PI * 2);
+  ctx.moveTo(state.player.x, state.player.y);
+  ctx.lineTo(pointer.x, pointer.y);
   ctx.stroke();
   ctx.restore();
 }
@@ -383,6 +394,7 @@ function tick() {
 
   drawBackground();
   drawFog();
+  drawPointerHint();
   drawDog();
   drawSniffCue();
   drawWinOverlay();
@@ -408,29 +420,38 @@ window.addEventListener("keyup", (event) => {
 
 window.addEventListener("blur", () => {
   keys.clear();
+  pointer.active = false;
+  pointer.pointerId = null;
 });
 
-for (const button of touchButtons) {
-  const dir = button.dataset.dir;
-  const map = { up: "arrowup", down: "arrowdown", left: "arrowleft", right: "arrowright" };
+canvas.addEventListener("pointerdown", (event) => {
+  const pos = getPointerCanvasPosition(event);
+  pointer.active = true;
+  pointer.pointerId = event.pointerId;
+  pointer.x = pos.x;
+  pointer.y = pos.y;
+  canvas.setPointerCapture(event.pointerId);
+});
 
-  const press = (event) => {
-    event.preventDefault();
-    keys.add(map[dir]);
-  };
+canvas.addEventListener("pointermove", (event) => {
+  if (!pointer.active || pointer.pointerId !== event.pointerId) return;
+  const pos = getPointerCanvasPosition(event);
+  pointer.x = pos.x;
+  pointer.y = pos.y;
+});
 
-  const release = (event) => {
-    event.preventDefault();
-    keys.delete(map[dir]);
-  };
-
-  button.addEventListener("touchstart", press, { passive: false });
-  button.addEventListener("touchend", release, { passive: false });
-  button.addEventListener("touchcancel", release, { passive: false });
-  button.addEventListener("mousedown", press);
-  button.addEventListener("mouseup", release);
-  button.addEventListener("mouseleave", release);
+function endPointer(event) {
+  if (pointer.pointerId !== event.pointerId) return;
+  pointer.active = false;
+  pointer.pointerId = null;
 }
+
+canvas.addEventListener("pointerup", endPointer);
+canvas.addEventListener("pointercancel", endPointer);
+canvas.addEventListener("pointerleave", (event) => {
+  if (event.pointerType !== "mouse") return;
+  endPointer(event);
+});
 
 restartButton.addEventListener("click", resetGame);
 sniffButton.addEventListener("click", triggerSniff);

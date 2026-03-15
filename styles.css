@@ -1,8 +1,7 @@
 ﻿:root {
   --bg-top: #f6d8a8;
   --bg-bottom: #f0a35e;
-  --panel: rgba(255, 248, 236, 0.92);
-  --panel-strong: #fff4df;
+  --panel: rgba(255, 248, 236, 0.94);
   --ink: #2d1d12;
   --accent: #c75b32;
   --accent-dark: #8d3a22;
@@ -25,9 +24,9 @@ body {
 }
 
 .app {
-  width: min(1100px, 100%);
+  width: min(980px, 100%);
   margin: 0 auto;
-  padding: 18px;
+  padding: 14px;
 }
 
 .hud,
@@ -44,8 +43,8 @@ body {
   justify-content: space-between;
   gap: 16px;
   align-items: start;
-  padding: 18px 20px;
-  margin-bottom: 16px;
+  padding: 16px 18px;
+  margin-bottom: 12px;
 }
 
 .eyebrow {
@@ -62,37 +61,40 @@ p {
 }
 
 h1 {
-  font-size: clamp(2rem, 4vw, 3.1rem);
+  font-size: clamp(1.7rem, 4vw, 3rem);
 }
 
 .status {
-  max-width: 380px;
+  max-width: 420px;
   display: grid;
   gap: 6px;
   font-size: 1rem;
 }
 
 .game-shell {
-  padding: 14px;
+  padding: 10px;
 }
 
 canvas {
   display: block;
   width: 100%;
+  aspect-ratio: 3 / 2;
   height: auto;
+  max-height: 68vh;
+  margin: 0 auto;
   background: var(--field);
   border-radius: 18px;
+  touch-action: none;
 }
 
 .controls-panel {
   display: flex;
   gap: 10px;
   justify-content: center;
-  margin-top: 12px;
+  margin-top: 10px;
 }
 
-.action,
-.touch-controls button {
+.action {
   border: 0;
   border-radius: 999px;
   padding: 12px 18px;
@@ -106,26 +108,9 @@ canvas {
   background: linear-gradient(180deg, #7a8f43, #506126);
 }
 
-.touch-controls {
-  margin: 16px auto 0;
-  width: min(360px, 100%);
-  display: none;
-  gap: 10px;
-}
-
-.touch-controls > button {
-  width: 100%;
-}
-
-.touch-row {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-}
-
 .howto {
-  margin-top: 16px;
-  padding: 18px 20px;
+  margin-top: 12px;
+  padding: 16px 18px;
 }
 
 ul {
@@ -145,14 +130,37 @@ li + li {
 
 @media (max-width: 720px) {
   .app {
-    padding: 12px;
+    padding: 10px;
   }
 
-  .touch-controls {
-    display: grid;
+  .hud,
+  .game-shell,
+  .howto {
+    border-radius: 18px;
+  }
+
+  .hud {
+    padding: 14px;
+  }
+
+  .game-shell {
+    padding: 8px;
+  }
+
+  canvas {
+    max-height: 58vh;
+    border-radius: 14px;
   }
 
   .controls-panel {
     flex-wrap: wrap;
+  }
+
+  .action {
+    min-width: 140px;
+  }
+
+  .howto {
+    font-size: 0.95rem;
   }
 }
