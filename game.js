@@ -333,7 +333,7 @@ function rectsOverlap(a, b) {
 
 function triggerSniff() {
   if (state.stage !== "blanket") {
-    state.sniffPulse = 70;
+    state.sniffPulse = 180;
     playSound("sniff");
   }
 }
@@ -1019,6 +1019,7 @@ function drawNeighborhoodStage() {
     ctx.fillStyle = "#7f5f25";
     ctx.fillRect(-2, -6, 4, 12);
     ctx.restore();
+    drawInterestMarker(state.neighborhood.tag.x, state.neighborhood.tag.y, "#ffe28a");
   }
 
   ctx.save();
@@ -1027,7 +1028,20 @@ function drawNeighborhoodStage() {
   ctx.beginPath();
   ctx.ellipse(0, 0, 18, 12, 0, 0, Math.PI * 2);
   ctx.fill();
+  ctx.beginPath();
+  ctx.arc(-10, -8, 6, 0, Math.PI * 2);
+  ctx.arc(0, -10, 6, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = "#c88e93";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(15, 2);
+  ctx.quadraticCurveTo(32, 8, 37, 18);
+  ctx.stroke();
   ctx.restore();
+  if (!state.neighborhood.mouse.met && state.neighborhood.tag.found) {
+    drawInterestMarker(state.neighborhood.mouse.x, state.neighborhood.mouse.y, "#d8f0ff");
+  }
 
   if (state.neighborhood.parkOpen) {
     ctx.fillStyle = "#7b4d2c";
@@ -1072,6 +1086,7 @@ function drawParkStage() {
     ctx.fill();
     ctx.fillRect(-3, 0, 6, 18);
     ctx.restore();
+    drawInterestMarker(state.park.ribbon.x, state.park.ribbon.y, "#ffd8d8");
   }
 
   ctx.save();
@@ -1083,6 +1098,9 @@ function drawParkStage() {
   ctx.fillStyle = "#de8a30";
   ctx.fillRect(12, -4, 12, 8);
   ctx.restore();
+  if (!state.park.duck.met && state.park.ribbon.found) {
+    drawInterestMarker(state.park.duck.x, state.park.duck.y, "#fff0a8");
+  }
 
   if (state.park.gazeboOpen) {
     ctx.fillStyle = "#f5e6cc";
@@ -1136,27 +1154,47 @@ function drawDog() {
   ctx.restore();
 }
 
+function drawInterestMarker(x, y, color) {
+  const bob = Math.sin(Date.now() / 180) * 4;
+  ctx.save();
+  ctx.translate(x, y - 34 + bob);
+  ctx.fillStyle = color || "#fff0a8";
+  ctx.beginPath();
+  ctx.arc(0, 0, 12, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#5b432f";
+  ctx.font = "bold 16px Georgia";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("!", 0, 1);
+  ctx.restore();
+}
+
 function drawSniffCue() {
   const target = getSniffTarget();
   if (!target || state.sniffPulse <= 0 || state.dialog.active) return;
   const dx = target.x - state.player.x;
   const dy = target.y - state.player.y;
   const angle = Math.atan2(dy, dx);
+  const distance = Math.hypot(dx, dy);
+  const alpha = Math.min(0.98, state.sniffPulse / 180 + 0.2);
+  const shaft = Math.min(145, Math.max(90, distance - 28));
   ctx.save();
   ctx.translate(state.player.x, state.player.y);
   ctx.rotate(angle);
-  ctx.strokeStyle = `rgba(255, 255, 210, ${Math.min(0.95, state.sniffPulse / 70)})`;
-  ctx.lineWidth = 7;
+  ctx.strokeStyle = `rgba(255, 244, 170, ${alpha})`;
+  ctx.lineWidth = 9;
   ctx.beginPath();
   ctx.moveTo(30, 0);
-  ctx.lineTo(110, 0);
+  ctx.lineTo(shaft, 0);
   ctx.stroke();
+  ctx.fillStyle = `rgba(255, 244, 170, ${alpha})`;
   ctx.beginPath();
-  ctx.moveTo(110, 0);
-  ctx.lineTo(88, -14);
-  ctx.moveTo(110, 0);
-  ctx.lineTo(88, 14);
-  ctx.stroke();
+  ctx.moveTo(shaft + 20, 0);
+  ctx.lineTo(shaft - 10, -18);
+  ctx.lineTo(shaft - 10, 18);
+  ctx.closePath();
+  ctx.fill();
   ctx.restore();
 }
 
