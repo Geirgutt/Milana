@@ -110,10 +110,26 @@ const storyScripts = {
   ],
   parkIntro: [
     { speaker: "Hund", text: "Parken! Nå kommer jeg nærmere." },
-    { speaker: "Hund", text: "Jeg tror jeg nesten husker noe viktig..." }
+    { speaker: "Hund", text: "Her lukter det både pølser, gress og... bursdag?" },
+    { speaker: "Hund", text: "Jeg må lete etter flere spor." }
+  ],
+  ribbonFound: [
+    { speaker: "Hund", text: "En rød sløyfe!" },
+    { speaker: "Hund", text: "Var det dette musa mente?" },
+    { speaker: "Hund", text: "Jeg husker glimt av ballonger og latter." }
+  ],
+  duckMeeting: [
+    { speaker: "And", text: "Kvakk! Milo, endelig!" },
+    { speaker: "Hund", text: "Du kjenner meg også?" },
+    { speaker: "And", text: "Selvsagt. Følg stien til lysthuset." },
+    { speaker: "And", text: "Noen venter på deg der." }
+  ],
+  gazeboIntro: [
+    { speaker: "Hund", text: "Et lysthus... og masse pynt!" },
+    { speaker: "Hund", text: "Vent... nå husker jeg!" },
+    { speaker: "Hund", text: "Det er min bursdagsfest!" }
   ]
 };
-
 const state = {
   stage: "blanket",
   player: { x: 320, y: 320, r: 18, speed: 3.45 },
@@ -121,6 +137,7 @@ const state = {
   houseGoal: { x: 1120, y: 270, w: 58, h: 180 },
   gardenGoal: { x: 1088, y: 310, w: 74, h: 152 },
   neighborhoodGoal: { x: 1108, y: 300, w: 64, h: 180 },
+  parkGoal: { x: 1010, y: 96, w: 140, h: 96 },
   sniffPulse: 0,
   scarePulse: 0,
   dialog: { active: false, key: null, index: 0, onFinish: null },
@@ -133,9 +150,13 @@ const state = {
     tag: { x: 505, y: 175, r: 20, found: false },
     mouse: { x: 770, y: 470, r: 18, met: false },
     parkOpen: false
+  },
+  park: {
+    ribbon: { x: 286, y: 540, r: 22, found: false },
+    duck: { x: 808, y: 410, r: 24, met: false },
+    gazeboOpen: false
   }
 };
-
 function updateSoundButton() {
   soundButton.textContent = audioState.enabled ? "Lyd: På" : "Lyd: Av";
 }
@@ -292,11 +313,16 @@ function resetGame() {
   state.garden.collar.found = false;
   state.garden.cat.met = false;
   state.garden.nextGateOpen = false;
+  state.neighborhood.tag.found = false;
+  state.neighborhood.mouse.met = false;
+  state.neighborhood.parkOpen = false;
+  state.park.ribbon.found = false;
+  state.park.duck.met = false;
+  state.park.gazeboOpen = false;
   resetInput();
   resetScares();
   resetStory();
 }
-
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
@@ -331,9 +357,32 @@ function getSniffTarget() {
       y: state.gardenGoal.y + state.gardenGoal.h / 2
     };
   }
+  if (state.stage === "neighborhood") {
+    if (!state.neighborhood.tag.found) {
+      return { x: state.neighborhood.tag.x, y: state.neighborhood.tag.y };
+    }
+    if (!state.neighborhood.mouse.met) {
+      return { x: state.neighborhood.mouse.x, y: state.neighborhood.mouse.y };
+    }
+    return {
+      x: state.neighborhoodGoal.x + state.neighborhoodGoal.w / 2,
+      y: state.neighborhoodGoal.y + state.neighborhoodGoal.h / 2
+    };
+  }
+  if (state.stage === "park") {
+    if (!state.park.ribbon.found) {
+      return { x: state.park.ribbon.x, y: state.park.ribbon.y };
+    }
+    if (!state.park.duck.met) {
+      return { x: state.park.duck.x, y: state.park.duck.y };
+    }
+    return {
+      x: state.parkGoal.x + state.parkGoal.w / 2,
+      y: state.parkGoal.y + state.parkGoal.h / 2
+    };
+  }
   return null;
 }
-
 function getCanvasPosition(clientX, clientY) {
   const rect = canvas.getBoundingClientRect();
   const scaleX = canvas.width / rect.width;
@@ -587,6 +636,54 @@ function movePlayer() {
     if (state.neighborhood.parkOpen && rectsOverlap(playerRect, state.neighborhoodGoal)) {
       playSound("gate");
       beginStory("parkIntro", () => {
+        state.stage = "park";
+        state.player.x = 122;
+        state.player.y = 660;
+      });
+    }
+    return;
+  }
+
+  if (state.stage === "park") {
+    const playerRect = {
+      x: next.x - state.player.r,
+      y: next.y - state.player.r,
+      w: state.player.r * 2,
+      h: state.player.r * 2
+    };
+
+    const parkObstacles = [
+      { x: 145, y: 112, w: 168, h: 118 },
+      { x: 432, y: 220, w: 156, h: 74 },
+      { x: 640, y: 130, w: 150, h: 110 },
+      { x: 884, y: 470, w: 150, h: 94 }
+    ];
+
+    const blocked = parkObstacles.some((item) => rectsOverlap(playerRect, item));
+    if (!blocked) {
+      state.player.x = next.x;
+      state.player.y = next.y;
+    }
+
+    const ribbonDistance = Math.hypot(state.player.x - state.park.ribbon.x, state.player.y - state.park.ribbon.y);
+    if (!state.park.ribbon.found && ribbonDistance < 34) {
+      state.park.ribbon.found = true;
+      playSound("memory");
+      beginStory("ribbonFound");
+    }
+
+    const duckDistance = Math.hypot(state.player.x - state.park.duck.x, state.player.y - state.park.duck.y);
+    if (state.park.ribbon.found && !state.park.duck.met && duckDistance < 46) {
+      state.park.duck.met = true;
+      playSound("dialog");
+      beginStory("duckMeeting", () => {
+        state.park.gazeboOpen = true;
+      });
+    }
+
+    if (state.park.gazeboOpen && rectsOverlap(playerRect, state.parkGoal)) {
+      playSound("gate");
+      beginStory("gazeboIntro", () => {
         state.stage = "win";
         playSound("win");
       });
@@ -594,7 +691,6 @@ function movePlayer() {
     return;
   }
 }
-
 function drawBlanketStage() {
   ctx.fillStyle = "#f6efe7";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -936,17 +1032,79 @@ function drawNeighborhoodStage() {
   if (state.neighborhood.parkOpen) {
     ctx.fillStyle = "#7b4d2c";
     ctx.fillRect(state.neighborhoodGoal.x, state.neighborhoodGoal.y, state.neighborhoodGoal.w, state.neighborhoodGoal.h);
+    ctx.fillStyle = "rgba(255, 238, 190, 0.45)";
+    ctx.fillRect(state.neighborhoodGoal.x + 10, state.neighborhoodGoal.y + 16, state.neighborhoodGoal.w - 20, state.neighborhoodGoal.h - 32);
   }
 }
 
+function drawParkStage() {
+  ctx.fillStyle = "#92c7f2";
+  ctx.fillRect(0, 0, canvas.width, 230);
+  ctx.fillStyle = "#90c86f";
+  ctx.fillRect(0, 230, canvas.width, 570);
+
+  ctx.fillStyle = "#d1b27b";
+  ctx.fillRect(90, 650, 1020, 78);
+  ctx.fillRect(240, 520, 240, 60);
+  ctx.fillRect(480, 430, 210, 54);
+  ctx.fillRect(690, 315, 210, 54);
+  ctx.fillRect(900, 185, 160, 54);
+
+  ctx.fillStyle = "#5d9141";
+  ctx.beginPath();
+  ctx.arc(220, 170, 76, 0, Math.PI * 2);
+  ctx.arc(700, 160, 70, 0, Math.PI * 2);
+  ctx.arc(980, 520, 66, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = "#8f623e";
+  ctx.fillRect(430, 220, 156, 74);
+  ctx.fillRect(640, 130, 150, 110);
+  ctx.fillRect(884, 470, 150, 94);
+
+  if (!state.park.ribbon.found) {
+    ctx.save();
+    ctx.translate(state.park.ribbon.x, state.park.ribbon.y);
+    ctx.fillStyle = "#df4343";
+    ctx.beginPath();
+    ctx.arc(-8, 0, 10, 0, Math.PI * 2);
+    ctx.arc(8, 0, 10, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillRect(-3, 0, 6, 18);
+    ctx.restore();
+  }
+
+  ctx.save();
+  ctx.translate(state.park.duck.x, state.park.duck.y);
+  ctx.fillStyle = state.park.duck.met ? "#f1cf53" : "#e5bb2f";
+  ctx.beginPath();
+  ctx.arc(0, 0, 18, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#de8a30";
+  ctx.fillRect(12, -4, 12, 8);
+  ctx.restore();
+
+  if (state.park.gazeboOpen) {
+    ctx.fillStyle = "#f5e6cc";
+    ctx.fillRect(state.parkGoal.x, state.parkGoal.y, state.parkGoal.w, state.parkGoal.h);
+    ctx.fillStyle = "#b15b45";
+    ctx.beginPath();
+    ctx.moveTo(state.parkGoal.x - 10, state.parkGoal.y + 18);
+    ctx.lineTo(state.parkGoal.x + state.parkGoal.w / 2, state.parkGoal.y - 26);
+    ctx.lineTo(state.parkGoal.x + state.parkGoal.w + 10, state.parkGoal.y + 18);
+    ctx.closePath();
+    ctx.fill();
+  }
+}
 function drawBackground() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   if (state.stage === "blanket") return drawBlanketStage();
   if (state.stage === "house") return drawHouseStage();
   if (state.stage === "garden") return drawGardenStage();
-  return drawNeighborhoodStage();
+  if (state.stage === "neighborhood") return drawNeighborhoodStage();
+  if (state.stage === "park") return drawParkStage();
+  return drawParkStage();
 }
-
 function drawDog() {
   const { x, y, r } = state.player;
   ctx.save();
@@ -1017,11 +1175,20 @@ function drawFog() {
 function drawWinOverlay() {
   if (state.stage !== "win") return;
   ctx.save();
-  ctx.fillStyle = "rgba(255, 250, 240, 0.2)";
+  ctx.fillStyle = "rgba(255, 248, 224, 0.32)";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = "#fff4dd";
+  ctx.fillRect(340, 180, 520, 240);
+  ctx.fillStyle = "#c75f45";
+  ctx.font = "bold 46px Georgia";
+  ctx.textAlign = "center";
+  ctx.fillText("Milo husket alt!", canvas.width / 2, 250);
+  ctx.fillStyle = "#5b432f";
+  ctx.font = "28px Georgia";
+  ctx.fillText("Vennene ventet på bursdagsfest i parken.", canvas.width / 2, 310);
+  ctx.fillText("Trykk Start på nytt for å spille igjen.", canvas.width / 2, 355);
   ctx.restore();
 }
-
 function tick() {
   movePlayer();
   if (state.sniffPulse > 0) state.sniffPulse -= 1;
