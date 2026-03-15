@@ -2,41 +2,65 @@
 <html lang="no">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <title>Hunden i Teppet</title>
-  <link rel="stylesheet" href="styles.css">
+  <script>
+    const assetVersion = Date.now();
+    const stylesheet = document.createElement("link");
+    stylesheet.rel = "stylesheet";
+    stylesheet.href = `styles.css?v=${assetVersion}`;
+    document.head.appendChild(stylesheet);
+  </script>
 </head>
 <body>
-  <main class="app">
-    <section class="hud">
-      <div>
-        <p class="eyebrow">Browser-spill</p>
-        <h1>Hunden i Teppet</h1>
+  <main class="app-shell">
+    <section class="game-frame" aria-label="Spill">
+      <canvas id="game" width="900" height="600" aria-label="Spillflate"></canvas>
+
+      <div class="overlay top-left">
+        <button id="helpButton" class="icon-button" aria-label="Vis hjelp">?</button>
       </div>
-      <div class="status">
+
+      <div class="overlay top-right">
+        <button id="sniffButton" class="pill-button">Snus</button>
+        <button id="restartButton" class="pill-button secondary">Start på nytt</button>
+      </div>
+
+      <div class="overlay bottom-left status-card">
         <p id="stageLabel">Nivå 1: Kom deg ut av teppet</p>
         <p id="message">Rull gjennom foldene, finn åpningen og kom deg løs.</p>
       </div>
-    </section>
 
-    <section class="game-shell">
-      <canvas id="game" width="900" height="600" aria-label="Spillflate"></canvas>
-      <div class="controls-panel">
-        <button id="sniffButton" class="action">Snus</button>
-        <button id="restartButton" class="action secondary">Start på nytt</button>
+      <div class="overlay bottom-right joystick-wrap" aria-hidden="true">
+        <div id="joystickBase" class="joystick-base">
+          <div id="joystickKnob" class="joystick-knob"></div>
+        </div>
       </div>
-    </section>
-
-    <section class="howto">
-      <h2>Slik spiller du</h2>
-      <ul>
-        <li>På mobil drar du fingeren på spillflaten for å styre hunden.</li>
-        <li>På PC kan du bruke piltaster eller WASD.</li>
-        <li>Det som er nær hunden er synlig, resten ligger i svart fog of war.</li>
-      </ul>
     </section>
   </main>
 
-  <script src="game.js"></script>
+  <dialog id="helpDialog" class="help-dialog">
+    <form method="dialog" class="help-card">
+      <div class="help-header">
+        <h2>Hvordan spille</h2>
+        <button class="icon-button close-button" value="close" aria-label="Lukk hjelp">×</button>
+      </div>
+      <ul>
+        <li>På mobil bruker du joysticken nederst til høyre eller drar på spillflaten.</li>
+        <li>På PC bruker du piltaster eller WASD.</li>
+        <li>Snus viser pil mot utgangen når du er inne i huset.</li>
+        <li>Det som er nær hunden vises. Resten ligger i svart fog of war.</li>
+      </ul>
+    </form>
+  </dialog>
+
+  <script>
+    const gameScript = document.createElement("script");
+    gameScript.src = `game.js?v=${assetVersion}`;
+    document.body.appendChild(gameScript);
+  </script>
 </body>
 </html>

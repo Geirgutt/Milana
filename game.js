@@ -4,13 +4,27 @@ const stageLabel = document.getElementById("stageLabel");
 const message = document.getElementById("message");
 const restartButton = document.getElementById("restartButton");
 const sniffButton = document.getElementById("sniffButton");
+const helpButton = document.getElementById("helpButton");
+const helpDialog = document.getElementById("helpDialog");
+const joystickBase = document.getElementById("joystickBase");
+const joystickKnob = document.getElementById("joystickKnob");
 
 const keys = new Set();
 const pointer = {
   active: false,
   x: 0,
   y: 0,
-  pointerId: null
+  pointerId: null,
+  touchId: null,
+  usingTouchEvents: false
+};
+const joystick = {
+  active: false,
+  pointerId: null,
+  touchId: null,
+  dx: 0,
+  dy: 0,
+  maxRadius: 34
 };
 
 const state = {
@@ -38,22 +52,46 @@ const state = {
   ]
 };
 
+function updateText(title, body) {
+  stageLabel.textContent = title;
+  message.textContent = body;
+}
+
+function resetPointer() {
+  pointer.active = false;
+  pointer.pointerId = null;
+  pointer.touchId = null;
+  pointer.usingTouchEvents = false;
+}
+
+function renderJoystick() {
+  joystickKnob.style.transform = `translate(calc(-50% + ${joystick.dx}px), calc(-50% + ${joystick.dy}px))`;
+}
+
+function resetJoystick() {
+  joystick.active = false;
+  joystick.pointerId = null;
+  joystick.touchId = null;
+  joystick.dx = 0;
+  joystick.dy = 0;
+  renderJoystick();
+}
+
+function resetInput() {
+  resetPointer();
+  resetJoystick();
+}
+
 function resetGame() {
   state.stage = "blanket";
   state.player.x = 320;
   state.player.y = 320;
   state.sniffPulse = 0;
-  pointer.active = false;
-  pointer.pointerId = null;
+  resetInput();
   updateText(
     "Nivå 1: Kom deg ut av teppet",
     "Rull gjennom foldene, finn åpningen og kom deg løs."
   );
-}
-
-function updateText(title, body) {
-  stageLabel.textContent = title;
-  message.textContent = body;
 }
 
 function clamp(value, min, max) {
@@ -68,14 +106,47 @@ function triggerSniff() {
   if (state.stage === "house") state.sniffPulse = 70;
 }
 
-function getPointerCanvasPosition(event) {
+function getCanvasPosition(clientX, clientY) {
   const rect = canvas.getBoundingClientRect();
   const scaleX = canvas.width / rect.width;
   const scaleY = canvas.height / rect.height;
   return {
-    x: (event.clientX - rect.left) * scaleX,
-    y: (event.clientY - rect.top) * scaleY
+    x: (clientX - rect.left) * scaleX,
+    y: (clientY - rect.top) * scaleY
   };
+}
+
+function beginPointer(clientX, clientY) {
+  const pos = getCanvasPosition(clientX, clientY);
+  pointer.active = true;
+  pointer.x = pos.x;
+  pointer.y = pos.y;
+}
+
+function updatePointer(clientX, clientY) {
+  const pos = getCanvasPosition(clientX, clientY);
+  pointer.x = pos.x;
+  pointer.y = pos.y;
+}
+
+function updateJoystickFromClient(clientX, clientY) {
+  const rect = joystickBase.getBoundingClientRect();
+  const centerX = rect.left + rect.width / 2;
+  const centerY = rect.top + rect.height / 2;
+  let dx = clientX - centerX;
+  let dy = clientY - centerY;
+  const length = Math.hypot(dx, dy);
+  const maxRadius = Math.min(rect.width, rect.height) * 0.34;
+  joystick.maxRadius = maxRadius;
+
+  if (length > maxRadius && length > 0) {
+    dx = (dx / length) * maxRadius;
+    dy = (dy / length) * maxRadius;
+  }
+
+  joystick.dx = dx;
+  joystick.dy = dy;
+  renderJoystick();
 }
 
 function getMovementVector() {
@@ -87,9 +158,14 @@ function getMovementVector() {
   if (keys.has("arrowleft") || keys.has("a")) dx -= 1;
   if (keys.has("arrowright") || keys.has("d")) dx += 1;
 
+  if (joystick.active && joystick.maxRadius > 0) {
+    dx += joystick.dx / joystick.maxRadius;
+    dy += joystick.dy / joystick.maxRadius;
+  }
+
   if (pointer.active) {
-    dx += pointer.x - state.player.x;
-    dy += pointer.y - state.player.y;
+    dx += (pointer.x - state.player.x) / 90;
+    dy += (pointer.y - state.player.y) / 90;
   }
 
   return { dx, dy };
@@ -109,9 +185,12 @@ function getMovementSpeed() {
     if (slowZone) speed *= 0.62;
   }
 
-  if (pointer.active) {
+  if (joystick.active && joystick.maxRadius > 0) {
+    const power = Math.hypot(joystick.dx, joystick.dy) / joystick.maxRadius;
+    speed *= Math.min(1.4, Math.max(0.38, power));
+  } else if (pointer.active) {
     const distance = Math.hypot(pointer.x - state.player.x, pointer.y - state.player.y);
-    speed *= Math.min(1.35, Math.max(0.22, distance / 75));
+    speed *= Math.min(1.45, Math.max(0.3, distance / 70));
   }
 
   return speed;
@@ -122,7 +201,7 @@ function movePlayer() {
   let dx = movement.dx;
   let dy = movement.dy;
 
-  if (Math.abs(dx) < 5 && Math.abs(dy) < 5) return;
+  if (Math.abs(dx) < 0.04 && Math.abs(dy) < 0.04) return;
 
   const length = Math.hypot(dx, dy) || 1;
   const speed = getMovementSpeed();
@@ -165,7 +244,7 @@ function movePlayer() {
       state.player.y = 500;
       updateText(
         "Nivå 2: Tåkete hus",
-        "Dra med fingeren for å styre. Rundt hunden er det klart, kanten fader ut i svart fog of war."
+        "Bruk joysticken eller dra på spillflaten. Det nære er synlig, og kanten fader ut i svart fog of war."
       );
     }
 
@@ -353,7 +432,7 @@ function drawFog() {
     fadeRadius
   );
   gradient.addColorStop(0, "rgba(255,255,255,1)");
-  gradient.addColorStop(0.7, "rgba(255,255,255,1)");
+  gradient.addColorStop(0.72, "rgba(255,255,255,1)");
   gradient.addColorStop(1, "rgba(255,255,255,0)");
   ctx.fillStyle = gradient;
   ctx.beginPath();
@@ -365,7 +444,7 @@ function drawFog() {
 function drawPointerHint() {
   if (!pointer.active) return;
   ctx.save();
-  ctx.strokeStyle = "rgba(255,255,255,0.22)";
+  ctx.strokeStyle = "rgba(255,255,255,0.24)";
   ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.moveTo(state.player.x, state.player.y);
@@ -420,30 +499,29 @@ window.addEventListener("keyup", (event) => {
 
 window.addEventListener("blur", () => {
   keys.clear();
-  pointer.active = false;
-  pointer.pointerId = null;
+  resetInput();
 });
 
 canvas.addEventListener("pointerdown", (event) => {
-  const pos = getPointerCanvasPosition(event);
-  pointer.active = true;
+  event.preventDefault();
+  pointer.usingTouchEvents = false;
   pointer.pointerId = event.pointerId;
-  pointer.x = pos.x;
-  pointer.y = pos.y;
-  canvas.setPointerCapture(event.pointerId);
+  beginPointer(event.clientX, event.clientY);
+  if (canvas.setPointerCapture) {
+    canvas.setPointerCapture(event.pointerId);
+  }
 });
 
 canvas.addEventListener("pointermove", (event) => {
-  if (!pointer.active || pointer.pointerId !== event.pointerId) return;
-  const pos = getPointerCanvasPosition(event);
-  pointer.x = pos.x;
-  pointer.y = pos.y;
+  if (!pointer.active || pointer.usingTouchEvents) return;
+  if (pointer.pointerId !== event.pointerId) return;
+  event.preventDefault();
+  updatePointer(event.clientX, event.clientY);
 });
 
 function endPointer(event) {
   if (pointer.pointerId !== event.pointerId) return;
-  pointer.active = false;
-  pointer.pointerId = null;
+  resetPointer();
 }
 
 canvas.addEventListener("pointerup", endPointer);
@@ -453,8 +531,105 @@ canvas.addEventListener("pointerleave", (event) => {
   endPointer(event);
 });
 
+canvas.addEventListener("touchstart", (event) => {
+  event.preventDefault();
+  const touch = event.changedTouches[0];
+  pointer.usingTouchEvents = true;
+  pointer.touchId = touch.identifier;
+  beginPointer(touch.clientX, touch.clientY);
+}, { passive: false });
+
+canvas.addEventListener("touchmove", (event) => {
+  if (!pointer.active || pointer.touchId === null) return;
+  const touch = Array.from(event.touches).find((item) => item.identifier === pointer.touchId);
+  if (!touch) return;
+  event.preventDefault();
+  updatePointer(touch.clientX, touch.clientY);
+}, { passive: false });
+
+function endTouch(event) {
+  if (pointer.touchId === null) return;
+  const touch = Array.from(event.changedTouches).find((item) => item.identifier === pointer.touchId);
+  if (!touch) return;
+  event.preventDefault();
+  resetPointer();
+}
+
+canvas.addEventListener("touchend", endTouch, { passive: false });
+canvas.addEventListener("touchcancel", endTouch, { passive: false });
+
+joystickBase.addEventListener("pointerdown", (event) => {
+  event.preventDefault();
+  event.stopPropagation();
+  joystick.active = true;
+  joystick.pointerId = event.pointerId;
+  updateJoystickFromClient(event.clientX, event.clientY);
+  if (joystickBase.setPointerCapture) {
+    joystickBase.setPointerCapture(event.pointerId);
+  }
+});
+
+joystickBase.addEventListener("pointermove", (event) => {
+  if (!joystick.active || joystick.pointerId !== event.pointerId) return;
+  event.preventDefault();
+  updateJoystickFromClient(event.clientX, event.clientY);
+});
+
+function endJoystickPointer(event) {
+  if (joystick.pointerId !== event.pointerId) return;
+  resetJoystick();
+}
+
+joystickBase.addEventListener("pointerup", endJoystickPointer);
+joystickBase.addEventListener("pointercancel", endJoystickPointer);
+
+joystickBase.addEventListener("touchstart", (event) => {
+  event.preventDefault();
+  event.stopPropagation();
+  const touch = event.changedTouches[0];
+  joystick.active = true;
+  joystick.touchId = touch.identifier;
+  updateJoystickFromClient(touch.clientX, touch.clientY);
+}, { passive: false });
+
+joystickBase.addEventListener("touchmove", (event) => {
+  if (!joystick.active || joystick.touchId === null) return;
+  const touch = Array.from(event.touches).find((item) => item.identifier === joystick.touchId);
+  if (!touch) return;
+  event.preventDefault();
+  updateJoystickFromClient(touch.clientX, touch.clientY);
+}, { passive: false });
+
+function endJoystickTouch(event) {
+  if (joystick.touchId === null) return;
+  const touch = Array.from(event.changedTouches).find((item) => item.identifier === joystick.touchId);
+  if (!touch) return;
+  event.preventDefault();
+  resetJoystick();
+}
+
+joystickBase.addEventListener("touchend", endJoystickTouch, { passive: false });
+joystickBase.addEventListener("touchcancel", endJoystickTouch, { passive: false });
+
+helpButton.addEventListener("click", () => {
+  if (helpDialog.showModal) {
+    helpDialog.showModal();
+  }
+});
+
+helpDialog.addEventListener("click", (event) => {
+  const rect = helpDialog.getBoundingClientRect();
+  const inside =
+    event.clientX >= rect.left &&
+    event.clientX <= rect.right &&
+    event.clientY >= rect.top &&
+    event.clientY <= rect.bottom;
+  if (!inside) helpDialog.close();
+});
+
 restartButton.addEventListener("click", resetGame);
 sniffButton.addEventListener("click", triggerSniff);
 
+renderJoystick();
 resetGame();
 tick();
