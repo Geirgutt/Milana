@@ -1,7 +1,5 @@
 ﻿const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
-const stageLabel = document.getElementById("stageLabel");
-const message = document.getElementById("message");
 const restartButton = document.getElementById("restartButton");
 const sniffButton = document.getElementById("sniffButton");
 const helpButton = document.getElementById("helpButton");
@@ -52,11 +50,6 @@ const state = {
   ]
 };
 
-function updateText(title, body) {
-  stageLabel.textContent = title;
-  message.textContent = body;
-}
-
 function resetPointer() {
   pointer.active = false;
   pointer.pointerId = null;
@@ -88,10 +81,6 @@ function resetGame() {
   state.player.y = 320;
   state.sniffPulse = 0;
   resetInput();
-  updateText(
-    "Nivå 1: Kom deg ut av teppet",
-    "Rull gjennom foldene, finn åpningen og kom deg løs."
-  );
 }
 
 function clamp(value, min, max) {
@@ -242,10 +231,6 @@ function movePlayer() {
       state.stage = "house";
       state.player.x = 100;
       state.player.y = 500;
-      updateText(
-        "Nivå 2: Tåkete hus",
-        "Bruk joysticken eller dra på spillflaten. Det nære er synlig, og kanten fader ut i svart fog of war."
-      );
     }
 
     return;
@@ -268,10 +253,6 @@ function movePlayer() {
 
   if (rectsOverlap(playerRect, state.houseGoal)) {
     state.stage = "win";
-    updateText(
-      "Du klarte det!",
-      "Hunden fant veien ut av huset. Trykk Start på nytt for å spille igjen."
-    );
   }
 }
 
@@ -309,12 +290,6 @@ function drawBlanketStage() {
 
   ctx.fillStyle = "#fff4df";
   ctx.fillRect(state.blanketGap.x, state.blanketGap.y, state.blanketGap.w, state.blanketGap.h);
-
-  ctx.fillStyle = "#8d3a22";
-  ctx.font = "24px Georgia";
-  ctx.fillText("Finn åpningen i teppet", 45, 52);
-  ctx.font = "20px Georgia";
-  ctx.fillText("Rull gjennom foldene uten å sette deg fast", 45, 82);
 }
 
 function drawHouseStage() {
@@ -333,12 +308,6 @@ function drawHouseStage() {
 
   ctx.fillStyle = "#9fd1cf";
   ctx.fillRect(state.houseGoal.x, state.houseGoal.y, state.houseGoal.w, state.houseGoal.h);
-  ctx.fillStyle = "#295d66";
-  ctx.font = "22px Georgia";
-  ctx.fillText("Ut", state.houseGoal.x + 17, state.houseGoal.y + 68);
-
-  ctx.fillStyle = "#8d3a22";
-  ctx.fillText("Følg lukten og lydene mot døren", 36, 48);
 }
 
 function drawBackground() {
@@ -415,55 +384,24 @@ function drawSniffCue() {
 function drawFog() {
   if (state.stage !== "house") return;
 
-  const clearRadius = 150;
-  const fadeRadius = 280;
+  const visibleRadius = 185;
 
   ctx.save();
-  ctx.fillStyle = "rgba(0, 0, 0, 0.96)";
+  ctx.fillStyle = "rgba(0, 0, 0, 1)";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   ctx.globalCompositeOperation = "destination-out";
-  const gradient = ctx.createRadialGradient(
-    state.player.x,
-    state.player.y,
-    clearRadius,
-    state.player.x,
-    state.player.y,
-    fadeRadius
-  );
-  gradient.addColorStop(0, "rgba(255,255,255,1)");
-  gradient.addColorStop(0.72, "rgba(255,255,255,1)");
-  gradient.addColorStop(1, "rgba(255,255,255,0)");
-  ctx.fillStyle = gradient;
   ctx.beginPath();
-  ctx.arc(state.player.x, state.player.y, fadeRadius, 0, Math.PI * 2);
+  ctx.arc(state.player.x, state.player.y, visibleRadius, 0, Math.PI * 2);
   ctx.fill();
-  ctx.restore();
-}
-
-function drawPointerHint() {
-  if (!pointer.active) return;
-  ctx.save();
-  ctx.strokeStyle = "rgba(255,255,255,0.24)";
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(state.player.x, state.player.y);
-  ctx.lineTo(pointer.x, pointer.y);
-  ctx.stroke();
   ctx.restore();
 }
 
 function drawWinOverlay() {
   if (state.stage !== "win") return;
   ctx.save();
-  ctx.fillStyle = "rgba(255, 250, 240, 0.55)";
+  ctx.fillStyle = "rgba(255, 250, 240, 0.28)";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = "#8d3a22";
-  ctx.font = "bold 42px Georgia";
-  ctx.textAlign = "center";
-  ctx.fillText("Voff! Du fant veien ut!", canvas.width / 2, 190);
-  ctx.font = "28px Georgia";
-  ctx.fillText("Trykk Start på nytt for en ny runde.", canvas.width / 2, 242);
   ctx.restore();
 }
 
@@ -473,7 +411,6 @@ function tick() {
 
   drawBackground();
   drawFog();
-  drawPointerHint();
   drawDog();
   drawSniffCue();
   drawWinOverlay();
@@ -633,3 +570,4 @@ sniffButton.addEventListener("click", triggerSniff);
 renderJoystick();
 resetGame();
 tick();
+
